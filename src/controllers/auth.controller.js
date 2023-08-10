@@ -5,16 +5,13 @@ import { createAccessToken } from '../libs/jwt.js';
 export const register = async (req, res) => {
   const { username, email, password } = req.body;
   try {
-
     const passwordHash = await bcrypt.hash(password, 10)
-
     const newUser = new User({
       username,
       email,
       password: passwordHash,
     });
     const userSaved = await newUser.save();
-
     const token = await createAccessToken({ id: userSaved._id })
     res.cookie("token", token);
     res.json({
@@ -34,13 +31,9 @@ export const login = async (req, res) => {
   try {
     const userFound = await User.findOne({ email })
     if (!userFound) return res.status(400).json({ message: "User not found" })
-
     const isMatch = await bcrypt.compare(password, userFound.password)
-
     if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
-
     const token = await createAccessToken({ id: userFound._id })
-
     res.cookie("token", token);
     res.json({
       _id: userFound._id,
