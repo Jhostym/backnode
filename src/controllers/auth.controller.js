@@ -1,40 +1,62 @@
 import User from '../models/user.model.js';
 import bcrypt from 'bcryptjs';
 import { createAccessToken } from '../libs/jwt.js';
+import jwt from 'jsonwebtoken';
 
 export const register = async (req, res) => {
-  const { username, email, password } = req.body;
   try {
-    const passwordHash = await bcrypt.hash(password, 10)
+    const { username, email, password } = req.body;
+
+    const userFound = await User.findOne({ email });
+
+    if (userFound)
+      return res.status(400).json(["The email is already in use"],
+      );
+
+    // hashing the password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // creating the user
     const newUser = new User({
       username,
       email,
       password: passwordHash,
     });
+
+    // saving the user in the database
     const userSaved = await newUser.save();
-    const token = await createAccessToken({ id: userSaved._id })
-    res.cookie("token", token);
+
+    // create access token
+    const token = await createAccessToken({
+      id: userSaved._id,
+    });
+
+    res.cookie("token", token, {
+      httpOnly: process.env.NODE_ENV !== "development",
+      secure: true,
+      sameSite: "none",
+    });
+
     res.json({
-      _id: userSaved._id,
+      id: userSaved._id,
       username: userSaved.username,
       email: userSaved.email,
-      createdAt: userSaved.createdAt,
-      updateAt: userSaved.updatedAt,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json(error.message);
   }
 };
+
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
   try {
     const userFound = await User.findOne({ email })
-    if (!userFound) return res.status(400).json({ message: "User not found" })
+    if (!userFound) return res.status(400).json(["User not found"])
     const isMatch = await bcrypt.compare(password, userFound.password)
-    if (!isMatch) return res.status(400).json({ message: "Incorrect password" });
+    if (!isMatch) return res.status(400).json(["Incorrect password"]);
     const token = await createAccessToken({ id: userFound._id })
-    res.cookie("token", token);
+    res.cookie("token", token)
     res.json({
       _id: userFound._id,
       username: userFound.username,
@@ -43,7 +65,7 @@ export const login = async (req, res) => {
       updateAt: userFound.updatedAt,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json(error.message );
   }
 };
 
@@ -68,6 +90,15 @@ export const profile = async (req, res) => {
   });
   res.send("profile")
 }
+
+export const verify = async (req, res) => {
+  const {token} = req.body
+
+  if (!token) return res.status(401).json({ message: "No autorizado" }) 
+
+  jwt verify(token, process.env.SECRET, (err, user) => {
+
+  
 
 
 
